@@ -138,7 +138,7 @@ const u64=9
 const s16=10
 const u16=11
 
-function AFTypeCheck(dtype::DataType)
+function afTypeCheck(dtype::DataType)
 	   if dtype <: Float32
 	   	  return f32
 	   elseif dtype <: Complex{Float32}
@@ -164,7 +164,7 @@ function AFTypeCheck(dtype::DataType)
 	   elseif dtype <: UInt16
 	   	  return u16
 	   else 
-	   	  throw("ArrayFire Array support type $(T)")
+	   	  throw("ArrayFire Array unsupport type: $(T)")
 	   end
 end
 

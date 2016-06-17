@@ -1,5 +1,6 @@
 # f(x)=abs(x)
 
+
 function Fabs(x)
     return (abs(x),nothing)
 end
@@ -26,10 +27,9 @@ end
 
 Derivative[Fabs]=Dabs # Define dictionary lookup
 Inplace[Fabs]=Fabs_inplace
-
 import Base.abs
 
-abs(n::ADnode)=ADnode(Fabs,n)
+abs(n::ADnode)=ADAbsNode(n)
 
 ###abs(A::ADtrans)=transpose(abs(node[A.parent])) # abs(A')=(abs(A))' TODO:check
 

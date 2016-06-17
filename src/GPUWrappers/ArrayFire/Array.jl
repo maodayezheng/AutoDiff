@@ -1,37 +1,31 @@
-type AFArray
-	 ptr::AFPtr
-
-	 function AFArray(pointer::AFPtr,release::Bool)
-	 	array = new(pointer)
-	 	if release
-	 	   finalizer(array,free)
-	 	end
-	 	return array
-	 end
-	 #Create an empty array 
-end
-export AFArray
-
-function AFArray{T,N}(::Type{T},dims::NTuple{N,Int};release=true)
+# Allocate an empty memory space
+function afAlloc{N}(dytpe::Int,s::NTuple{N,Int};release=true)
 		pointer = AFPtr[0]
-		dims = Clonglong[dims...]
-		dtype = AFTypeCheck(T)
+		dims = Clonglong[s...]
 		handler(pointer,N,dims,dtype)
-		array = AFArray(pointer[1],release)
-		return array 
-	end
+		pointer = pointer[1]
+		if release
+			finalizer(pointer,free)
+		end
+		return pointer
+end
 
-function AFArray{T,N}(data::Array{T,N};release=true)
+# Allocate memory space with data
+function afAlloc{T,N}(data::Array{T,N};release=true)
 		pointer = AFPtr[0]
-		dims = Clonglong[size(data)...]
+		s = size(data)
+		dims = Clonglong[s...]
 		dtype = AFTypeCheck(T)	
 		create(pointer,data,N,dims,dtype)
-		return AFArray(pointer[1],release)
+		pointer = pointer[1]
+		if release
+			finalizer(pointer,free)
+		end
+		return pointer,s,dtype
 	end
 
-
-function free(array::AFArray)
-	@afcheck(:af_release_array,(AFPtr, ),array.ptr)
+function free(p::AFPtr)
+	@afcheck(:af_release_array,(AFPtr, ),p)
 end
 
 function handler(ptr,ndims,dims,dtype)
@@ -42,9 +36,9 @@ function create(ptr,data,ndims,dims,dtype)
 	@afcheck(:af_create_array,(Ptr{AFPtr},Ptr{Void},UInt,Ptr{Clonglong},UInt),ptr,data,ndims,dims,dtype)
 end
 
-function Base.eltype(array::AFArray)
+function Base.eltype(p::AFPtr)
 	dtype = UInt[0]
-	@afcheck(:af_get_type,(Ptr{UInt},Ptr{AFPtr}),dtype,array.ptr)
+	@afcheck(:af_get_type,(Ptr{UInt},Ptr{AFPtr}),dtype,p)
 	dtype = dtype[1]
 	if dtype == f32 
 		 return Float32

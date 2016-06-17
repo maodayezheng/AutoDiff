@@ -1,6 +1,5 @@
 module AutoDiff
 # (c) David Barber, University College London 2015
-
 push!(LOAD_PATH,pwd())
 #push!(LOAD_PATH, joinpath(pwd(), "src"))
 
@@ -14,7 +13,7 @@ include("gpumacros.jl")
 #export @gpu, @cpu
 
 include("initfile.jl")
-
+include("GPUWrappers/ArrayFire/ArrayFire.jl")
 @cpu println("Using CPU")
 #@gpu println("Compiling kernels...")
 #@gpu include("compile_kernels.jl")
@@ -29,8 +28,41 @@ include("initfile.jl")
 using Reexport
 @gpu (@reexport using CUDArt;println("reexport using CUDArt"))
 
-global nodecounter
-export nodecounter
+abstract ADnode # parent of all AD type
+abstract ADParams <:ADnode # parent of ADEntry,ADDifferentiable and ADDumb
+abstract ADEntry <: ADParams # Parent of ADVariable and ADConstant
+abstract ADPath <: ADParams # Parent of ADDifferentiable and ADDumb
+abstract ADFunction <: ADnode # parent of functions
+
+# entry of variable 
+function variable{T,N}(::Type{T},s::NTuple{N,Int};update=true)
+    dtype = afTypeCheck(T)
+    pointer = afAlloc(T,s)
+    if update
+        return ADDifferentiable(pointer,s,dtype)
+    else 
+        return ADDumb(pointer,s,dtype)
+    end
+end
+
+
+function variable{T,N}(v::Array{T,N};update=true)
+        pointer,s,dtype = afAlloc(v)
+    if update 
+        return ADDifferentiable(pointer,s,dtype)
+    else
+        return ADDumb(pointer,s,dtype)
+    end
+end
+
+# entry of constant
+function constant{T,N}(::Type{T},s::NTuple{N,Int})
+    return variable(T,s;update=false)
+end
+
+function constant{T,N}(v::Array{T,N})
+    return variable(v;update=false)
+end
 
 global GPU
 
@@ -38,21 +70,12 @@ global GPU
 @cpu ArrayOrCudaArray = Array
 
 
-function StartCode()
-    global nodecounter = 0
-    global node=[]
-end
-export StartCode
 
 function EndCode()
     return network()
 end
 export EndCode
 
-function NodeCounter()
-    global nodecounter
-    nodecounter
-end
 export NodeCounter
 
 function Node()
